@@ -1,6 +1,4 @@
-import random
 import shutil
-import string
 import colorama
 import termcolor
 import time
@@ -42,7 +40,7 @@ def main():
     print("--> Version " + termcolor.colored(SCRIPT_VERSION, "cyan"))
 
     print(STR_SEPARATOR + "- DESTINATION -" + STR_SEPARATOR)
-    USB_KEY_LOCATION = input("[INPUT] Destination de la clé USB (Style Windows) : ")
+    USB_KEY_LOCATION = input("[INPUT] Destination de la clé USB : ")
 
     # On va générer un fichier d'environ 1 Go
     # Contenant des charactères aléatoires
