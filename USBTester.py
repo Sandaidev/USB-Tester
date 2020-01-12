@@ -7,34 +7,18 @@ import time
 import hashlib
 import os
 import secrets
+import traceback
+import sys
 from decimal import Decimal
 
 # Whaaa des couleurs!
 colorama.init()
 
+SCRIPT_VERSION = "1.1"
+
 TEST_FILENAME = "USBTESTFILE.rnd"
 FILE_CHARNUMBER = 1000000000
 STR_SEPARATOR = "====================="
-
-
-def sanitizedInput(input_type, printed_str):
-    """
-    Vérifie que l'entrée soit du bon type
-    """
-
-    while True:
-        try:
-            # On essaye de convertir l'entrée au bon type
-            user_input = input_type(input(printed_str))
-            break
-
-        except:
-            # L'entrée n'est pas du bon type, du coup, on recommence
-            termcolor.cprint(
-                "Cette entrée n'est pas du type " + str(input_type) + "!", "yellow"
-            )
-
-    return user_input
 
 
 def ret_md5(filename):
@@ -49,70 +33,113 @@ def ret_md5(filename):
     return hash_md5.hexdigest()
 
 
-termcolor.cprint("USB Tester", "cyan")
-termcolor.cprint("Par Erwan", "green")
-USB_KEY_LOCATION = input("Destination de la clé USB (Style Windows) : ")
+def main():
+    print(
+        termcolor.colored("USB Tester", "cyan")
+        + " -- Par "
+        + termcolor.colored("Erwan", "cyan")
+    )
+    print("--> Version " + termcolor.colored(SCRIPT_VERSION, "cyan"))
 
-# On va générer un fichier d'environ 1 Go
-# Contenant des charactères aléatoires
+    print(STR_SEPARATOR + "- DESTINATION -" + STR_SEPARATOR)
+    USB_KEY_LOCATION = input("[INPUT] Destination de la clé USB (Style Windows) : ")
 
-# On construit le dictionnaire de génération
-str_charset = string.ascii_letters + string.digits + string.punctuation
-test_file_write = open(TEST_FILENAME, "w")
+    # On va générer un fichier d'environ 1 Go
+    # Contenant des charactères aléatoires
 
-print(STR_SEPARATOR + "- GENERATION -" + STR_SEPARATOR)
+    # On construit le dictionnaire de génération
+    test_file_write = open(TEST_FILENAME, "w")
 
-termcolor.cprint("[1/4] Génération de 1 Go...", "cyan")
+    print(STR_SEPARATOR + "- GENERATION -" + STR_SEPARATOR)
 
-# On commence à générer avec 1 Gigaoctet
-# NOTE: 1 charactère = 1 octet
+    termcolor.cprint("[1/5] Génération de 1 Go...", "cyan")
 
-for x in range((FILE_CHARNUMBER // 100000) // 2):
-    test_file_write.write(secrets.token_hex(100000))
+    # On commence à générer avec 1 Gigaoctet
+    # NOTE: 1 charactère = 1 octet
 
-test_file_write.close()
+    for x in range((FILE_CHARNUMBER // 100000) // 2):
+        test_file_write.write(secrets.token_hex(100000))
 
-# Calcul de la taille du fichier généré en MB (utilisé pour calculer la vitesse de transfert plus tard)
-FLOAT_TEST_FILESIZE_MB = round(Decimal(os.path.getsize(TEST_FILENAME) / 1024 / 1024), 3)
+    test_file_write.close()
+
+    # Calcul de la taille du fichier généré en MB (utilisé pour calculer la vitesse de transfert plus tard)
+    FLOAT_TEST_FILESIZE_MB = round(
+        Decimal(os.path.getsize(TEST_FILENAME) / 1024 / 1024), 3
+    )
+
+    termcolor.cprint("[2/5] génération de la somme de contrôle MD5 (entrée)...", "cyan")
+    START_FILE_MD5_DIGEST = ret_md5(TEST_FILENAME)
+
+    # Le fichier test est à présent généré! OUAIIIS!
+    # On doit le déplacer vers la destination et mesurer le temps pris
+
+    termcolor.cprint("[3/5] Déplacement du fichier (Source -> Destination)... ", "cyan")
+    start_time_write = time.time()
+    shutil.move(TEST_FILENAME, USB_KEY_LOCATION + "\\" + TEST_FILENAME)
+    time_took_write = round(Decimal(time.time() - start_time_write), 2)
+
+    termcolor.cprint("[4/5] Génération de la somme de contrôle MD5 (sortie)...", "cyan")
+    END_FILE_MD5_DIGEST = ret_md5(USB_KEY_LOCATION + "\\" + TEST_FILENAME)
+
+    # On mesure la vitesse de lecture
+    # On déplace le fichier depuis la destination vers la source
+    termcolor.cprint("[5/5] Déplacement du fichier (Destination -> Source)...", "cyan")
+    start_time_read = time.time()
+    shutil.move(USB_KEY_LOCATION + "\\" + TEST_FILENAME, TEST_FILENAME)
+    time_took_read = round(Decimal(time.time() - start_time_read), 2)
+
+    # Suppression du fichier de destination
+    os.remove(TEST_FILENAME)
+
+    print(STR_SEPARATOR + "- INTEGRITE -" + STR_SEPARATOR)
+
+    termcolor.cprint("MD5 Entrée : " + str(START_FILE_MD5_DIGEST), "magenta")
+    termcolor.cprint("MD5 Sortie : " + str(END_FILE_MD5_DIGEST), "magenta")
+
+    if START_FILE_MD5_DIGEST == END_FILE_MD5_DIGEST:
+        termcolor.cprint("Somme de contrôle OK!", "green")
+
+    else:
+        termcolor.cprint("Différence de somme de contrôle [Fichier corrompu]!", "red")
+
+    average_write_speed_mbps = round(FLOAT_TEST_FILESIZE_MB / time_took_write, 3)
+    average_read_speed_mbps = round(FLOAT_TEST_FILESIZE_MB / time_took_read, 3)
+
+    print(STR_SEPARATOR + "- STATS -" + STR_SEPARATOR)
+    # STATS ECRITURE (SOURCE --> DESTINATION)
+    print("[Ecriture]")
+    print(
+        "Vitesse d'écriture moyenne (Source --> Destination) : "
+        + termcolor.colored(str(average_write_speed_mbps) + " MB/s", "magenta")
+    )
+
+    print(
+        "Temps d'écriture : "
+        + termcolor.colored(str(time_took_write) + " secondes", "magenta")
+    )
+    # STATS LECTURE (DESTINATION --> SOURCE)
+    print("[Lecture]")
+    print(
+        "Vitesse de lecture moyenne (Destination --> Source) : "
+        + termcolor.colored(str(average_read_speed_mbps) + " MB/s", "magenta")
+    )
+    print(
+        "Temps de lecture : "
+        + termcolor.colored(str(time_took_read) + " secondes", "magenta")
+    )
+    print(STR_SEPARATOR * 2)
+    input("Appuyez sur [ENTREE] pour quitter...")
+    sys.exit()
 
 
-termcolor.cprint("[2/4] Préparation de la comparaison des deux fichiers...", "cyan")
-START_FILE_MD5_DIGEST = ret_md5(TEST_FILENAME)
+try:
+    main()
 
-# Le fichier test est à présent généré! OUAIIIS!
-# On doit le déplacer vers la destination et mesurer le temps pris
-
-termcolor.cprint("[3/4] Déplacement du fichier source...", "cyan")
-start_time = time.time()
-shutil.move(TEST_FILENAME, USB_KEY_LOCATION + "\\" + TEST_FILENAME)
-time_took = round(Decimal(time.time() - start_time), 2)
-
-termcolor.cprint("[4/4] Comparaison des deux fichiers...", "cyan")
-END_FILE_MD5_DIGEST = ret_md5(USB_KEY_LOCATION + "\\" + TEST_FILENAME)
-
-# Suppression du fichier de destination
-os.remove(USB_KEY_LOCATION + "\\" + TEST_FILENAME)
-
-print(STR_SEPARATOR + "- INTEGRITE -" + STR_SEPARATOR)
-
-termcolor.cprint("MD5 Entrée : " + str(START_FILE_MD5_DIGEST), "magenta")
-termcolor.cprint("MD5 Sortie : " + str(END_FILE_MD5_DIGEST), "magenta")
-
-if START_FILE_MD5_DIGEST == END_FILE_MD5_DIGEST:
-    termcolor.cprint("Intégrité du fichier garantie!", "green")
-
-else:
-    termcolor.cprint("Inégrité du fichier non gerantie!", "red")
-
-
-average_transfer_speed_mbps = round(FLOAT_TEST_FILESIZE_MB / time_took, 3)
-
-print(STR_SEPARATOR + "- STATS -" + STR_SEPARATOR)
-print(
-    "Vitesse de transfert moyenne (Taille div. par temps): "
-    + termcolor.colored(str(average_transfer_speed_mbps) + " MB/s", "magenta")
-)
-
-print("Temps pris : " + termcolor.colored(str(time_took) + " secondes", "magenta"))
-print(STR_SEPARATOR * 2)
-input("Appuyez sur [ENTREE] pour quitter...")
+except Exception as script_crash:
+    # Merde
+    termcolor.cprint(STR_SEPARATOR + "- CRASH! -" + STR_SEPARATOR, "grey", "on_red")
+    print("...Merde!")
+    print("BASE EXCEPTION : " + str(script_crash))
+    termcolor.cprint("==- TRACEBACK -==", "red")
+    traceback.print_exc()
+    input("Appuyez sur [Entrée] pour quitter...")
