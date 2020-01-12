@@ -1,3 +1,3 @@
 @ECHO OFF
-pyinstaller USBTester.py
+pyinstaller -y --onefile --noupx "USBTester.py"
 pause
