@@ -1,3 +1,3 @@
 @ECHO OFF
-pyinstaller -y --onefile --noupx "USBTester.py"
+pyinstaller --noconfirm --onefile --noupx --clean --icon "icon.ico" "USBTester.py"
 pause
