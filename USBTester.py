@@ -1,3 +1,11 @@
+# USB-Tester - Un script que j'ai écrit en trois heures
+# Fonctionnalités :
+#   - Génère un fichier de 1 Go et le bouge depuis/vers la clé USB spécifiée
+#   - Génère un checksum MD5 avant et après le déplacement pour voir si la clé USB est claquée ou pas
+#   - Affiche les vitesses de transferts en lecture et en écriture
+
+# Script formatté avec Black
+
 import shutil
 import colorama
 import termcolor
@@ -43,9 +51,8 @@ def main():
     USB_KEY_LOCATION = input("[INPUT] Destination de la clé USB : ")
 
     # On va générer un fichier d'environ 1 Go
-    # Contenant des charactères aléatoires
-
-    # On construit le dictionnaire de génération
+    # avec des caractères aléatoires
+    
     test_file_write = open(TEST_FILENAME, "w")
 
     print(STR_SEPARATOR + "- GENERATION -" + STR_SEPARATOR)
@@ -53,14 +60,13 @@ def main():
     termcolor.cprint("[1/5] Génération de 1 Go...", "cyan")
 
     # On commence à générer avec 1 Gigaoctet
-    # NOTE: 1 charactère = 1 octet
 
     for x in range((FILE_CHARNUMBER // 100000) // 2):
         test_file_write.write(secrets.token_hex(100000))
 
     test_file_write.close()
 
-    # Calcul de la taille du fichier généré en MB (utilisé pour calculer la vitesse de transfert plus tard)
+    # Calcul de la taille du fichier généré en MB (Pour calculer la vitesse de transfert après)
     FLOAT_TEST_FILESIZE_MB = round(
         Decimal(os.path.getsize(TEST_FILENAME) / 1024 / 1024), 3
     )
@@ -69,7 +75,7 @@ def main():
     START_FILE_MD5_DIGEST = ret_md5(TEST_FILENAME)
 
     # Le fichier test est à présent généré! OUAIIIS!
-    # On doit le déplacer vers la destination et mesurer le temps pris
+    # On doit le déplacer vers la destination et mesurer le temps que ça a pris
 
     termcolor.cprint("[3/5] Déplacement du fichier (Source -> Destination)... ", "cyan")
     start_time_write = time.time()
@@ -80,13 +86,13 @@ def main():
     END_FILE_MD5_DIGEST = ret_md5(USB_KEY_LOCATION + "\\" + TEST_FILENAME)
 
     # On mesure la vitesse de lecture
-    # On déplace le fichier depuis la destination vers la source
+    # -> Donc on déplace le fichier depuis la destination vers la source
     termcolor.cprint("[5/5] Déplacement du fichier (Destination -> Source)...", "cyan")
     start_time_read = time.time()
     shutil.move(USB_KEY_LOCATION + "\\" + TEST_FILENAME, TEST_FILENAME)
     time_took_read = round(Decimal(time.time() - start_time_read), 2)
 
-    # Suppression du fichier de destination
+    # Ciao le fichier de destination
     os.remove(TEST_FILENAME)
 
     print(STR_SEPARATOR + "- INTEGRITE -" + STR_SEPARATOR)
@@ -104,7 +110,7 @@ def main():
     average_read_speed_mbps = round(FLOAT_TEST_FILESIZE_MB / time_took_read, 3)
 
     print(STR_SEPARATOR + "- STATS -" + STR_SEPARATOR)
-    # STATS ECRITURE (SOURCE --> DESTINATION)
+
     print("[Ecriture]")
     print(
         "Vitesse d'écriture moyenne (Source --> Destination) : "
@@ -115,7 +121,7 @@ def main():
         "Temps d'écriture : "
         + termcolor.colored(str(time_took_write) + " secondes", "magenta")
     )
-    # STATS LECTURE (DESTINATION --> SOURCE)
+
     print("[Lecture]")
     print(
         "Vitesse de lecture moyenne (Destination --> Source) : "
