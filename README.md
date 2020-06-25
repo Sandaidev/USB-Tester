@@ -1,5 +1,7 @@
-![](./media/NEW_USB_TESTER_ICO.png)
-(whaou ce logo)
+![logo](./media/NEW_USB_TESTER_ICO.png)
 
+## Qu'est-ce que c'est ?
+C'est un script qui teste l'état d'une clé USB
 
-Teste l'intégrité d'un fichier généré aléatoirement et sa vitesse de transfert entre deux disques
+## Fonctionnement
+![flowchart](./media/script_flowchart.png)
